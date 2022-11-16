@@ -1,6 +1,6 @@
 # frappy
 
-**frappy** (fractal and phase space analysis for python) is a Python package implementing a non subjective algorithm for calculating correlation dimensions from data.
+**frappy** (**fr**actal **a**nd **p**hase space analysis for **py**thon) is a Python package implementing a non subjective algorithm for calculating correlation dimensions from data.
 
 This package currently contains functions for:
 
