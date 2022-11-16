@@ -1,6 +1,6 @@
 # frappy
 
-**frappy** is a Python package implementing a non subjective algorithm for calculating correlation dimensions from data.
+**frappy** (fractal analysis for python) is a Python package implementing a non subjective algorithm for calculating correlation dimensions from data.
 
 This package currently contains functions for:
 
