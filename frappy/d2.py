@@ -5,14 +5,11 @@ Physica D (2006) https://doi.org/10.1016/j.physd.2006.01.027
 
 @author: SVG
 """
-
-import time
 import numpy as np
 import scipy.stats as sp
 import random
 from scipy.optimize import curve_fit
 def d2model(M,Md,Dsat):
-###Model for how D2 behaves with respect to M
     f=[]
     for i in M:
         if(i<Md):
@@ -21,9 +18,13 @@ def d2model(M,Md,Dsat):
             f.append(Dsat)
     
     return(np.array(f))
-
+def calc_chi2(ym, sig, yf):
+    diff = pow(ym-yf, 2.)
+    chi2 = (diff / pow(sig,2.)).sum()
+    df=len(ym)-2
+    rchi2=chi2/float(df)
+    return rchi2
 def uniform_deviate(x):
-###Converts a time series into a uniform deviate through a rank transformation
     x=np.array(x)
     rx=sp.rankdata(x)
     rx=rx/len(rx)
@@ -31,7 +32,6 @@ def uniform_deviate(x):
 
 
 def embedding(x,d=2,tau=0):
-###Embeds a time series into vectors of delay d
     x=np.array(x)
     if(tau==0):
         mu=np.mean(x)
@@ -50,7 +50,7 @@ def embedding(x,d=2,tau=0):
 
 
 def corrdim(dvec, Rmin=-1):
- ###Function to calculate correlation dimension for a group of vectors       
+        
     R_mat=[]
     d=len(dvec[0]) #Dimension of the data
     N=len(dvec) #Length of the data
@@ -76,9 +76,6 @@ def corrdim(dvec, Rmin=-1):
         temp=temp*rfact
     cor_mat=np.zeros(irmaxa)
     Tcen_mat=np.zeros(irmaxa)
-    start = time.time()
-    
-    ###Calculates correlation sum for different radii across centers
     for i in range (0,len(ci)):
         cent=dvec[ci[i]]
         mcom=min(cent)
@@ -94,9 +91,6 @@ def corrdim(dvec, Rmin=-1):
             csum=len(maxnorm_1)#k1 < R_mat[ir] for k1 in maxnorm)#
             cor_mat[ir]=cor_mat[ir]+csum-1
             Tcen_mat[ir]+=1
-    #print(Tcen_mat)        
-    end=time.time()
-    #print(start-end)
     cor_min = 10.0
     amin_cent = int(N/100.0)
     irmin=0
@@ -130,22 +124,67 @@ def corrdim(dvec, Rmin=-1):
        #jamax = ja
     slope, intercept, r_value, p_value, std_err = sp.linregress(x1,y1)
     print(d,slope,std_err)
-    return(slope,std_err,Rmin)
+    return(slope,std_err*np.sqrt(len(x1)),Rmin)
 
-def find_d2(ts):  
-###Converts D2 to a uniform deviate, embeds it in different dimensions and finds D2 for each
+def find_d2(ts,max_ed=10):    
     uts=uniform_deviate(ts)
-    d2_ts=[]
+    d2_ts=np.zeros(max_ed)
+    err_ts=np.zeros(max_ed)
     Rmin=-1
-    for m in range (1,11):
+    for m in range (1,max_ed+1):
         uts_vecs=embedding(uts,m)
-        slope,intercept,Rmin=corrdim(uts_vecs,Rmin)
-        d2_ts.append([slope,intercept])
-    return(d2_ts)
+        slope,err,Rmin=corrdim(uts_vecs,Rmin)
+        d2_ts[m-1]=slope
+        err_ts[m-1]=err
+    return(d2_ts,err_ts)
 def find_d2s(M,D2, errs=None):
 ####Takes embedding dimensions and correlation dimension as inputs
-    if(errs):
-      op2=curve_fit(d2model, M, D,p0=[2,2] ,sigma=errs)
+    D2=np.array(D2)
+    M=np.array(M)
+    
+    D2i=np.where(D2>.2)[0]
+    D2=D2[D2i]
+    M=M[D2i]
+    if errs is not None:
+        errs=np.array(errs)
+        errs=errs[D2i]
+    if errs is not None:
+      op2=curve_fit(d2model, M, D2,p0=[2,2] ,sigma=errs)
     else:
-      op2=curve_fit(d2model, M, D,p0=[2,2])
-    return(op2[0][1],int(op2[0][0])+1)
+      op2=curve_fit(d2model, M, D2,p0=[2,2])
+    bf=d2model(M, op2[0][0], op2[0][1])
+    if errs is not None:
+        chi2=calc_chi2(D2,errs,bf)
+    else:
+        chi2=np.nan
+    return(op2[0][1],int(op2[0][0])+1,chi2)
+
+def check_sat(M,D2,errs=None):
+####Takes embedding dimensions, correlation dimension and standard deviation as inputs, and checks if D2 saturates
+    if errs is None:
+        print("No error array found. Termininating")
+        return(np.nan)
+    d2sat,em,chi2=find_d2s(M,D2,errs)
+    print (em,d2sat)
+    if((d2sat>em-1) and(d2sat<em+1)):
+        print("Saturated D2 very close to maximum embedding dimension")
+        return("NS")
+    D2=np.array(D2)
+    M=np.array(M)
+    D2i=np.where(D2>.2)[0]
+    D2=D2[D2i]
+    M=M[D2i]
+    errs=np.array(errs)
+    errs=errs[D2i]
+    slope, intercept, r_value, p_value, std_err = sp.linregress(M,D2)
+    d2f=np.zeros(len(M))
+    for i in range (0,len(M)):
+        d2f[i]=slope*M[i]+intercept
+    chi2_lin=calc_chi2(D2,errs,d2f)
+    print(chi2,chi2_lin)
+    if(chi2_lin<chi2):
+        print("Linear fit is better. No Saturation.y=",slope,'x+', intercept)
+        return('NS')
+    else:
+        print("Saturated D2 fit is better than linear fit")
+        return(d2sat)   
