@@ -1,10 +1,10 @@
+# -*- coding: utf-8 -*-
 """
 Created on Wed Nov  9 18:17:42 2022
-Implementation of "A non-subjective approach to the GP algorithm for analysing noisy time series", K.P.Harikrishnan, R.Misra, G.Ambika, and A.K.Kembhavi
-Physica D (2006) https://doi.org/10.1016/j.physd.2006.01.027
 
 @author: SVG
 """
+
 import numpy as np
 import scipy.stats as sp
 import random
@@ -32,6 +32,21 @@ def uniform_deviate(x):
 
 
 def embedding(x,d=2,tau=0):
+    """
+    Returns embedded vectors in dimension d from a time series.
+    Parameter
+    ---------
+    x : 1-d numpy array
+        Input time series for which embedding is done
+    d : int
+        Dimension of the embedding space. Default, 2
+    tau : int
+	Time delay for the embedding.
+    Returns
+    -------
+    dvec : n-d numpy array
+	Array of embedded vectors
+    """     
     x=np.array(x)
     if(tau==0):
         mu=np.mean(x)
@@ -49,14 +64,31 @@ def embedding(x,d=2,tau=0):
     return(dvec)
 
 
-def corrdim(dvec, Rmin=-1):
-        
+def corrdim(dvec, Rmin=-1,Nc=-1):
+    """
+    Returns d2 for a series of embedded vectors.
+    Parameter
+    ---------
+    dvec : n-d numpy array
+        Input vectors for which D2 is caluculated
+    Rmin : float
+        Minimum R for which the scaling is calculated (See Harikrishnan et. al (2006) Physica D)
+    Nc : int
+	Number of centers around which the scaling is calculated
+    Returns
+    -------
+    slope: float 
+	Slope of the scaling region, i.e. the correlation dimension
+    std_err: float
+	Error for the straight line fit 
+    Rmin : float
+	Rmin for next value of embedding. (See find_d2)
+    """     
     R_mat=[]
     d=len(dvec[0]) #Dimension of the data
     N=len(dvec) #Length of the data
-    
-    Nc=int(max(len(dvec)/10,1000)) #Number of centers
-    
+    if(Nc==-1):
+	    Nc=int(max(len(dvec)/10,1000)) #Number of centers
     ci=random.sample(range(len(dvec)),Nc)
     Rmina=(1./N)#**(1./d)
     Rmina=Rmina/4.
@@ -126,7 +158,22 @@ def corrdim(dvec, Rmin=-1):
     print(d,slope,std_err)
     return(slope,std_err*np.sqrt(len(x1)),Rmin)
 
-def find_d2(ts,max_ed=10):    
+def find_d2(ts,max_ed=10):
+    """
+    Returns d2 vs M of given time series.
+    Parameter
+    ---------
+    ts : list or 1-d array
+        Input time series for which D2 is caluculated
+    max_ed : int
+        Maximum dimension till which the data is embedded.
+    Returns
+    -------
+    d2_ts : 1 d array 
+	D2 for embedding dimensions 1 to max_ed
+    err_ts: 1-d array 
+	Error for each value of D2
+    """ 
     uts=uniform_deviate(ts)
     d2_ts=np.zeros(max_ed)
     err_ts=np.zeros(max_ed)
@@ -138,7 +185,25 @@ def find_d2(ts,max_ed=10):
         err_ts[m-1]=err
     return(d2_ts,err_ts)
 def find_d2s(M,D2, errs=None):
-####Takes embedding dimensions and correlation dimension as inputs
+    """
+    Returns D2sat for given values of D2 and M (embedding dim).
+    Parameter
+    ---------
+    M : list or 1-d array
+        Embedding dimensions for values of D2
+    D2 : list or 1-d array
+        D2 for each value of M.
+    errs: list or 1-d array
+	Error for each value of D2
+    Returns
+    -------
+    op2[0][1]: float
+	Saturated D2 value after function fitting
+    int(op2[0][0])+1: int
+	Embedding dimension at which D2 saturates
+    chi2: float
+	Chi2 value for fit.
+    """
     D2=np.array(D2)
     M=np.array(M)
     
@@ -160,7 +225,22 @@ def find_d2s(M,D2, errs=None):
     return(op2[0][1],int(op2[0][0])+1,chi2)
 
 def check_sat(M,D2,errs=None):
-####Takes embedding dimensions, correlation dimension and standard deviation as inputs, and checks if D2 saturates
+    """
+    Checks for saturation and returns D2sat for given D2 and M.
+    Parameter
+    ---------
+    M : list or 1-d array
+        Embedding dimensions for values of D2
+    D2 : list or 1-d array
+        D2 for each value of M.
+    errs: list or 1-d array
+	Error for each value of D2
+    Returns
+    -------
+    d2sat: float
+	Saturated D2 value after function fitting
+    OR 'NS' if no saturation
+    """
     if errs is None:
         print("No error array found. Termininating")
         return(np.nan)
@@ -187,4 +267,4 @@ def check_sat(M,D2,errs=None):
         return('NS')
     else:
         print("Saturated D2 fit is better than linear fit")
-        return(d2sat)   
+        return(d2sat)
