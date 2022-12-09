@@ -13,7 +13,9 @@ This package currently contains functions for:
   - Preserving autocorrelation at lag-1 (AR(1) surrogates) 
 
 
-
+## Installation
+You can install frappy from PyPi using  
+&nbsp;&nbsp;&nbsp;&nbsp;**pip install frappy**
 
 ## Acknowledgements
 
