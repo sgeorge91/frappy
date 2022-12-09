@@ -8,6 +8,9 @@ This package currently contains functions for:
 - Embedding time series into a d-dimensional vector space
 - Calculate correlation dimension at different embedding dimensions
 - Calculate saturated correlation dimension and minimum embedding dimension using curve fitting
+- Module for generating surrogate data using
+  - Random shuffling
+  - Preserving autocorrelation at lag-1 (AR(1) surrogates) 
 
 
 
